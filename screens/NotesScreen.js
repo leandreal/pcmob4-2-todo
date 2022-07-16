@@ -9,13 +9,26 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import firebase from "../database/firebaseDB";
 
+const db = firebase.firestore().collection("todos");
+
 export default function NotesScreen({ navigation, route }) {
   const [notes, setNotes] = useState([]);
-  
-  firebase.firestore().collection('todos').add({
-    title: "Test this app",
-    done: true,
-  });
+
+  useEffect(() => {
+    const unsubscribe = db.onSnapshot((collection) => {
+      const updatedNotes = collection.docs.map((doc) => {
+        const noteObject = {
+          ...doc.data(),
+          id: doc.id,
+        };
+        console.log(noteObject);
+        return noteObject;
+      });
+      setNotes(updatedNotes);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // This is to set up the top right button
   useEffect(() => {
@@ -42,9 +55,8 @@ export default function NotesScreen({ navigation, route }) {
       const newNote = {
         title: route.params.text,
         done: false,
-        id: notes.length.toString(),
       };
-      setNotes([...notes, newNote]);
+      firebase.firestore().collection("todos").add(newNote);
     }
   }, [route.params?.text]);
 
@@ -56,7 +68,7 @@ export default function NotesScreen({ navigation, route }) {
   function deleteNote(id) {
     console.log("Deleting " + id);
     // To delete that item, we filter out the item we don't want
-    setNotes(notes.filter((item) => item.id !== id));
+    db.doc(id).delete();
   }
 
   // The function to render each row in our FlatList
